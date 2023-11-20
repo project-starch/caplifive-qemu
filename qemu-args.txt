@@ -1,7 +1,13 @@
--M virt-capstone -nographic
--bios buildroot/output/images/fw_jump.elf
--kernel buildroot/output/images/Image
+-M virt-capstone -m 8G -nographic
+-bios ../buildroot/output/images/fw_jump.elf
+-kernel ../buildroot/output/images/Image
 -append 'root=/dev/vda ro'
--drive file=buildroot/output/images/rootfs.ext2,format=raw,id=hd0
+-netdev user,id=net0,hostfwd=tcp::60022-:22
+-netdev user,id=net1
+-netdev user,id=net2
+-drive file=../buildroot/output/images/rootfs.ext2,format=raw,id=hd0
 -device virtio-blk-device,drive=hd0
+-device e1000,netdev=net0
+-device e1000,netdev=net1
+-device e1000,netdev=net2
 -cpu rv64,sstc=false,h=false
