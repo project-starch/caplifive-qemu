@@ -565,11 +565,9 @@ void helper_csmovc(CPURISCVState *env, uint32_t rd, uint32_t rs1) {
     capregval_t* rd_v = &env->gpr[rd];
     capregval_t* rs1_v = &env->gpr[rs1];
 
-    assert(rs1_v->tag); // TODO: let's worry invalid operations later
-
     if(rs1 != rd) {
         *rd_v = *rs1_v;
-        if(!captype_is_copyable(rs1_v->val.cap.type)) {
+        if(rs1_v->tag && !captype_is_copyable(rs1_v->val.cap.type)) {
             *rs1_v = CAPREGVAL_NULL;
         }
     }
@@ -901,7 +899,7 @@ static uint64_t _helper_access_with_cap(CPURISCVState *env, uint32_t rs1, uint64
         }
         // for load, we need to make sure it's a capability
         if(!is_store) {
-            env->load_is_cap = cap_mem_map_query(&env->cm_map, addr);
+            env->load_is_cap = cap_mem_map_query(&env->cm_map, addr, &env->load_cap_bounds);
         }
     }
 
@@ -930,6 +928,9 @@ void helper_reg_set_cap_compressed(CPURISCVState *env, uint32_t rd, uint64_t i64
     capregval_t* rd_v = &env->gpr[rd];
     cap_uncompress(i64_lo, i64_hi, &rd_v->val.cap);
     rd_v->tag = env->load_is_cap;
+    if(rd_v->tag) {
+        memcpy(&rd_v->val.cap.bounds, &env->load_cap_bounds, sizeof(capboundsfat_t));
+    }
 }
 
 uint64_t helper_compress_cap(CPURISCVState *env, uint32_t reg) {
@@ -949,9 +950,12 @@ uint64_t helper_compress_cap(CPURISCVState *env, uint32_t reg) {
 }
 
 /* set tag bit for address */
-void helper_set_cap_mem_map(CPURISCVState *env, uint64_t addr, uint64_t to_set) {
+void helper_set_cap_mem_map(CPURISCVState *env, uint32_t reg, uint64_t addr, uint64_t to_set) {
+    capregval_t* reg_v = &env->gpr[reg];
     if (to_set) {
-        cap_mem_map_add(&env->cm_map, addr);
+        cap_mem_map_add(&env->cm_map, addr, &reg_v->val.cap.bounds);
+    } else {
+        cap_mem_map_remove(&env->cm_map, addr);
     }
 }
 

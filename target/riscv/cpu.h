@@ -391,6 +391,7 @@ struct CPUArchState {
 
     target_ulong cap_compress_result_lo, cap_compress_result_hi; /* low and high of capability compression */
     bool load_is_cap; /* whether the load result is a capability */
+    capboundsfat_t load_cap_bounds;
 
 #ifdef CONFIG_KVM
     /* kvm timer */
@@ -471,7 +472,7 @@ void riscv_cpu_list(void);
 void riscv_cpu_validate_set_extensions(RISCVCPU *cpu, Error **errp);
 
 
-bool capstone_pre_mem_access(CPUState* cs, hwaddr phys_addr, int size, MMUAccessType access_type);
+bool capstone_pre_mem_access(CPUState* cs, hwaddr phys_addr, int size, MMUAccessType access_type, uintptr_t retaddr);
 
 #define cpu_list riscv_cpu_list
 #define cpu_mmu_index riscv_cpu_mmu_index
