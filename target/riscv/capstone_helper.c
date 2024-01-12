@@ -90,7 +90,8 @@ static inline void swap_pc(AddressSpace *as, CPURISCVState *env, hwaddr addr, hw
 #define SWAP_INT64(x) do { swap_int64(as, env, base_addr, &env->x); \
                     base_addr += CAPSTONE_INT64_SIZE; } while(0)
 
-void swap_domain_scoped_regs(AddressSpace *as, CPURISCVState *env, hwaddr base_addr, hwaddr pc_cursor) {
+void swap_domain_scoped_regs(AddressSpace *as, CPURISCVState *env, hwaddr base_addr, hwaddr pc_cursor,
+        enum domain_scoped_swap_mode mode) {
     int i;
 
     // CAPSTONE_DEBUG_PRINT("Domain scoped regs swapping @ 0x%lx\n", base_addr);
@@ -99,31 +100,38 @@ void swap_domain_scoped_regs(AddressSpace *as, CPURISCVState *env, hwaddr base_a
     swap_pc(as, env, base_addr, pc_cursor);
     base_addr += CAPSTONE_CAP_SIZE;
 
-    // swap GPRs
-    for(i = 1; i < 32; i ++) {
-        SWAP_CAP(gpr[i]);
-    }
-
     // swap CCSRs
     SWAP_CAP(ctvec);
-    SWAP_CAP(cepc);
-    SWAP_CAP(cmmu);
     SWAP_CAP(cscratch);
 
     // swap 64-bit CSRs
+
     // swap mstatus including the privilege level
     assert(!((env->mstatus >> 38) & 3)); // the bits are actually unused
     assert((env->mstatus >> 34) & 3);
     uint64_t mstatus_priv = env->mstatus | ((uint64_t)env->priv << 38);
     swap_int64(as, env, base_addr, &mstatus_priv);
     env->mstatus = mstatus_priv & ~((uint64_t)3 << 38);
+    // CAPSTONE_DEBUG_PRINT("D %lu %lu %d\n", env->priv, (mstatus_priv >> 38) & 3, env->ctvec.tag);
     riscv_cpu_set_mode(env, (mstatus_priv >> 38) & 3);
     base_addr += CAPSTONE_INT64_SIZE;
 
+    // swap 64-bit CSRs
     SWAP_INT64(mideleg);
     SWAP_INT64(medeleg);
     SWAP_INT64(mip);
     SWAP_INT64(mie);
+
+    // TODO: handle differently based on mode
+    SWAP_INT64(offsetmmu);
+    SWAP_CAP(cmmu);
+    SWAP_CAP(cepc);
+
+    // swap GPRs
+    for(i = 1; i < 32; i ++) {
+        SWAP_CAP(gpr[i]);
+    }
+
     SWAP_INT64(mcause);
     SWAP_INT64(mtval);
     SWAP_INT64(mtval2);
@@ -134,10 +142,9 @@ void swap_domain_scoped_regs(AddressSpace *as, CPURISCVState *env, hwaddr base_a
     SWAP_INT64(sepc);
     SWAP_INT64(sscratch);
     SWAP_INT64(satp);
-    SWAP_INT64(offsetmmu);
 
-    assert((env->mstatus >> 34) & 3);
-
+    // above is identical to C-scoped regs
+    
     tlb_flush(env_cpu(env)); // because satp has been changed
 
     QEMU_IOTHREAD_LOCK_GUARD(); // TODO: is this the right place?
@@ -155,10 +162,17 @@ void swap_c_effective_regs(AddressSpace *as, CPURISCVState *env, hwaddr base_add
     SWAP_CAP(ctvec);
     SWAP_CAP(cscratch);
     
+    assert(!((env->mstatus >> 38) & 3)); // the bits are actually unused
     assert((env->mstatus >> 34) & 3);
+    uint64_t mstatus_priv = env->mstatus | ((uint64_t)env->priv << 38);
+    swap_int64(as, env, base_addr, &mstatus_priv);
+    env->mstatus = mstatus_priv & ~((uint64_t)3 << 38);
+    // CAPSTONE_DEBUG_PRINT("C %lu %lu %d\n", env->priv, (mstatus_priv >> 38) & 3, env->ctvec.tag);
+    // assert(!(env->priv == 3 && ((mstatus_priv >> 38) & 3) == 0 && !env->ctvec.tag));
+    riscv_cpu_set_mode(env, (mstatus_priv >> 38) & 3);
+    base_addr += CAPSTONE_INT64_SIZE;
 
     // swap 64-bit CSRs
-    SWAP_INT64(mstatus);
     SWAP_INT64(mideleg);
     SWAP_INT64(medeleg);
     SWAP_INT64(mip);

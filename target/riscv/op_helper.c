@@ -998,8 +998,15 @@ void helper_set_pc_cap(CPURISCVState *env, uint32_t reg) {
 
 
 void helper_cscall(CPURISCVState *env, uint32_t rd, uint32_t rs1) {
+    assert(rd == rs1);
+
     CPUState *cs = env_cpu(env);
-    capregval_t* rs1_v = &env->gpr[rs1];
+    capregval_t* rs1_v;
+    if(rs1 == 0) {
+        rs1_v = &env->cih;
+    } else {
+        rs1_v = &env->gpr[rs1];
+    }
     
     if(!rs1_v->tag) {
         CAPSTONE_DEBUG_PRINT("Call requires a capability\n");
@@ -1013,6 +1020,7 @@ void helper_cscall(CPURISCVState *env, uint32_t rd, uint32_t rs1) {
     }
 
     capfat_t rs1_val = rs1_v->val.cap;
+    rs1_v->tag = false; /* always linear */
 
     swap_c_effective_regs(cs->as, env, rs1_val.bounds.base, env->pc);
 
@@ -1049,24 +1057,45 @@ void helper_csreturn(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2
             riscv_raise_exception(env, RISCV_EXCP_UNEXP_OP_TYPE, GETPC());
         }
 
-        if(rd_v->val.cap.type != CAP_TYPE_SEALEDRET) {
+        if(rd_v->val.cap.type != CAP_TYPE_SEALEDRET && rd_v->val.cap.type != CAP_TYPE_SEALED) {
             CAPSTONE_DEBUG_PRINT("Return requires a sealed-return capability\n");
             riscv_raise_exception(env, RISCV_EXCP_UNEXP_CAP_TYPE, GETPC());
         }
 
         capfat_t rd_cap = rd_v->val.cap;
+        if(rd_cap.type == CAP_TYPE_SEALED) {
+            rd_cap.reg = 0;
+        }
         capaddr_t base_addr = rd_cap.bounds.base;
         uint64_t rs2_val = rs2_v->val.scalar;
 
         switch(rd_cap.async) {
             case CAP_ASYNC_SYNC:
+                if(rd_cap.reg == 0 && env->cih.tag) {
+                    // cih already contains a capability
+                    // invalid operation
+                    CAPSTONE_DEBUG_PRINT("Return to synchronous sealed-return cap with reg = 0 is only allowed when cih = cnull\n");
+                    riscv_raise_exception(env, RISCV_EXCP_UNEXP_CAP_TYPE, GETPC());
+                }
+
                 *rd_v = CAPREGVAL_NULL;
                 
                 swap_c_effective_regs(cs->as, env, base_addr, rs1_v->val.scalar);
 
                 // write return reg
-                capregval_set_cap(&env->gpr[rd_cap.reg], &rd_cap);
-                env->gpr[rd_cap.reg].val.cap.type = CAP_TYPE_SEALED;
+                if(rd_cap.reg == 0) {
+                    assert(!env->cih.tag);
+                    capregval_set_cap(&env->cih, &rd_cap);
+                    env->cih.val.cap.type = CAP_TYPE_SEALED;
+                    // also deliver the V-interrupts
+                    
+                    QEMU_IOTHREAD_LOCK_GUARD();
+                    env->mip |= rs2_val;
+                    riscv_cpu_check_interrupts(env);
+                } else {
+                    capregval_set_cap(&env->gpr[rd_cap.reg], &rd_cap);
+                    env->gpr[rd_cap.reg].val.cap.type = CAP_TYPE_SEALED;
+                }
 
                 break;
             case CAP_ASYNC_ASYNC:
@@ -1075,7 +1104,7 @@ void helper_csreturn(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2
                 capregval_set_cap(&env->cih, &rd_cap);
                 *rd_v = CAPREGVAL_NULL;
 
-                swap_domain_scoped_regs(cs->as, env, base_addr, rs1_v->val.scalar);
+                swap_domain_scoped_regs(cs->as, env, base_addr, rs1_v->val.scalar, DOM_SCOPED_SWAP_IN);
 
                 // post the interrupts
                 QEMU_IOTHREAD_LOCK_GUARD();
