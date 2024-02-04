@@ -1203,11 +1203,11 @@ void helper_csdebuggencap(CPURISCVState *env, uint32_t rd, uint64_t rs1_v, uint6
     cap->async = 0;
     cap->perms = CAP_PERMS_RWX;
     cap->type = CAP_TYPE_LIN;
+    cap->rev_node_id = cap_rev_tree_create_lone_node(&env->cr_tree);
     rd_v->tag = true;
 }
 
 void helper_csdebugoncapmem(CPURISCVState *env, uint64_t rs1_v) {
-    CAPSTONE_DEBUG_PRINT("rs1_v = %lu\n", rs1_v);
     env->cap_mem = rs1_v != 0;
 }
 
@@ -1232,5 +1232,18 @@ void helper_csdebugprint(CPURISCVState *env, uint32_t rs1) {
 
 void helper_capstone_debugger(void) {
     CAPSTONE_DEBUG_PRINT("DEBUGGER\n");
+}
+
+void helper_csdebugcount(CPURISCVState *env, uint64_t rs1_v, uint64_t rs2_v) {
+    assert(rs1_v < 32);
+    env->capstone_debug_counters[rs1_v] += rs2_v;
+}
+
+void helper_csdebugcountprint(CPURISCVState *env) {
+    CAPSTONE_DEBUG_PRINT("CAPSTONE DEBUG COUNTERS\n");
+    int i;
+    for(i = 0; i < 32; i ++) {
+        CAPSTONE_DEBUG_PRINT("counter[%d] = %lu\n", i, env->capstone_debug_counters[i]);
+    }
 }
 

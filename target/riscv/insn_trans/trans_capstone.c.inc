@@ -283,3 +283,15 @@ static bool trans_csdebugbreak(DisasContext *ctx, arg_csdebugbreak *a) {
     gen_helper_capstone_debugger();
     return true;
 }
+
+static bool trans_csdebugcount(DisasContext *ctx, arg_csdebugcount *a) {
+    TCGv rs1_v = get_gpr(ctx, a->rs1, EXT_NONE);
+    TCGv rs2_v = get_gpr(ctx, a->rs2, EXT_NONE);
+    gen_helper_csdebugcount(cpu_env, rs1_v, rs2_v);
+    return true;
+}
+
+static bool trans_csdebugcountprint(DisasContext *ctx, arg_csdebugcountprint *a) {
+    gen_helper_csdebugcountprint(cpu_env);
+    return true;
+}
