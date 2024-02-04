@@ -27,8 +27,10 @@
 #include "exec/helper-proto.h"
 #include "capstone_defs.h"
 #include "cap_mem_map.h"
+#include "cap_rev_tree.h"
 #include "cap_compress.h"
 #include "capstone_helper.h"
+#include "trace.h"
 
 /* Exceptions processing helpers */
 G_NORETURN void riscv_raise_exception(CPURISCVState *env,
@@ -389,8 +391,10 @@ void helper_wfi(CPURISCVState *env)
                (prv_u || (prv_s && get_field(env->hstatus, HSTATUS_VTW)))) {
         riscv_raise_exception(env, RISCV_EXCP_VIRT_INSTRUCTION_FAULT, GETPC());
     } else {
-        cs->halted = 1;
-        cs->exception_index = EXCP_HLT;
+        // FIXME: the CPU is somehow never waken up with these
+        // NOP is a legal implementation of WFI
+        // cs->halted = 1;
+        // cs->exception_index = EXCP_HLT;
         cpu_loop_exit(cs);
     }
 }
@@ -562,8 +566,8 @@ target_ulong helper_hyp_hlvx_wu(CPURISCVState *env, target_ulong addr)
 /* Capstone helpers */
 
 void helper_csmovc(CPURISCVState *env, uint32_t rd, uint32_t rs1) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
 
     if(rs1 != rd) {
         *rd_v = *rs1_v;
@@ -574,9 +578,9 @@ void helper_csmovc(CPURISCVState *env, uint32_t rd, uint32_t rs1) {
 }
 
 void helper_cscincoffset(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
-    capregval_t* rs2_v = &env->gpr[rs2];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
+    capregval_t *rs2_v = &env->gpr[rs2];
 
     assert(rs1_v->tag && !rs2_v->tag);
 
@@ -596,8 +600,8 @@ void helper_cscincoffset(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t
 }
 
 void helper_cscincoffsetimm(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint64_t offset) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
 
     assert(rs1_v->tag);
 
@@ -615,9 +619,9 @@ void helper_cscincoffsetimm(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint6
 }
 
 void helper_csscc(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
-    capregval_t* rs2_v = &env->gpr[rs2];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
+    capregval_t *rs2_v = &env->gpr[rs2];
 
     assert(rs1_v->tag && !rs2_v->tag);
 
@@ -637,8 +641,8 @@ void helper_csscc(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2) {
 }
 
 void helper_cslcc(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t imm) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
 
     assert(rs1_v->tag);
     assert(imm != 2 || rs1_v->val.cap.type != CAP_TYPE_SEALED);
@@ -677,10 +681,36 @@ void helper_cslcc(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t imm) {
     }
 }
 
+void helper_csrevoke(CPURISCVState *env, uint32_t rs1) {
+    capregval_t *rs1_v = &env->gpr[rs1];
+
+    assert(rs1_v->tag);
+    assert(rs1_v->val.cap.type == CAP_TYPE_REV);
+
+    bool is_linear = cap_rev_tree_revoke(&env->cr_tree, rs1_v->val.cap.rev_node_id);
+    rs1_v->val.cap.type = is_linear ? CAP_TYPE_LIN : CAP_TYPE_UNINIT;
+    rs1_v->val.cap.bounds.cursor = rs1_v->val.cap.bounds.base;
+}
+
+void helper_csmrev(CPURISCVState *env, uint32_t rd, uint32_t rs1) {
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
+
+    assert(rs1_v->tag);
+    assert(rs1_v->val.cap.type == CAP_TYPE_LIN);
+
+    if(rs1 != rd) {
+        *rd_v = *rs1_v;
+    }
+
+    rd_v->val.cap.type = CAP_TYPE_REV;
+    rd_v->val.cap.rev_node_id = cap_rev_tree_mrev(&env->cr_tree, rs1_v->val.cap.rev_node_id);
+}
+
 void helper_csshrink(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
-    capregval_t* rs2_v = &env->gpr[rs2];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
+    capregval_t *rs2_v = &env->gpr[rs2];
 
     assert(rd_v->tag && !rs1_v->tag && !rs2_v->tag);
     assert(rd_v->val.cap.type == CAP_TYPE_LIN || rd_v->val.cap.type == CAP_TYPE_NONLIN ||
@@ -703,8 +733,8 @@ void helper_csshrink(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2
 }
 
 void helper_csshrinkto(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint64_t size) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
 
     assert(rs1_v->tag);
     assert(rs1_v->val.cap.type == CAP_TYPE_LIN || rs1_v->val.cap.type == CAP_TYPE_NONLIN ||
@@ -718,9 +748,9 @@ void helper_csshrinkto(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint64_t s
 }
 
 void helper_cssplit(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
-    capregval_t* rs2_v = &env->gpr[rs2];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
+    capregval_t *rs2_v = &env->gpr[rs2];
 
     assert(rs1_v->tag && !rs2_v->tag);
     assert(rs1_v->val.cap.type == CAP_TYPE_LIN || rs1_v->val.cap.type == CAP_TYPE_NONLIN);
@@ -737,12 +767,13 @@ void helper_cssplit(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2)
 
         rd_v->val.cap.bounds.base = mid;
         rd_v->val.cap.bounds.cursor = mid;
+        rd_v->val.cap.rev_node_id = cap_rev_tree_split(&env->cr_tree, rs1_v->val.cap.rev_node_id);
     }
 }
 
 void helper_cstighten(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t perms) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
 
     assert(rs1_v->tag);
     assert(rs1_v->val.cap.type == CAP_TYPE_LIN || rs1_v->val.cap.type == CAP_TYPE_NONLIN ||
@@ -760,21 +791,28 @@ void helper_cstighten(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t pe
     }
 
     rd_v->val.cap.perms = perms_p;
+
+    if(rd_v->val.cap.type == CAP_TYPE_LIN && !cap_perms_allow(rd_v->val.cap.perms, CAP_PERMS_WO)) {
+        // immutable linear capability can be safely invalidated without
+        // scrubbing the data
+        cap_rev_tree_delin(&env->cr_tree, rd_v->val.cap.rev_node_id);
+    }
 }
 
 void helper_csdelin(CPURISCVState *env, uint32_t rd) {
-    capregval_t* rd_v = &env->gpr[rd];
+    capregval_t *rd_v = &env->gpr[rd];
 
     assert(rd_v->tag);
     assert(rd_v->val.cap.type == CAP_TYPE_LIN);
 
     rd_v->val.cap.type = CAP_TYPE_NONLIN;
+    cap_rev_tree_delin(&env->cr_tree, rd_v->val.cap.rev_node_id);
 }
 
 void helper_csinit(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
-    capregval_t* rs2_v = &env->gpr[rs2];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
+    capregval_t *rs2_v = &env->gpr[rs2];
 
     assert(rs1_v->tag && !rs2_v->tag);
     assert(rs1_v->val.cap.type == CAP_TYPE_UNINIT);
@@ -794,8 +832,8 @@ void helper_csinit(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2) 
 }
 
 void helper_csseal(CPURISCVState *env, uint32_t rd, uint32_t rs1) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
 
     if(!rs1_v->tag) {
         CAPSTONE_DEBUG_PRINT("Sealing requires a capability\n");
@@ -827,9 +865,9 @@ void helper_csseal(CPURISCVState *env, uint32_t rd, uint32_t rs1) {
 }
 
 void helper_csccsrrw(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint64_t ccsr_id) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
-    capregval_t* ccsr = NULL;
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
+    capregval_t *ccsr = NULL;
     capregval_t tmp;
 
     CPUState* cpu = env_cpu(env);
@@ -876,14 +914,14 @@ void helper_csccsrrw(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint64_t ccs
 static uint64_t _helper_access_with_cap(CPURISCVState *env, uint32_t rs1, uint64_t imm, uint32_t memop, bool is_store) {
     // CAPSTONE_DEBUG_PRINT("Cap mem access %u %lx\n", rs1, imm);
 
-    capregval_t* rs1_v = &env->gpr[rs1];
+    capregval_t *rs1_v = &env->gpr[rs1];
 
     if(!rs1_v->tag) {
         CAPSTONE_DEBUG_PRINT("Cap mem access requires capability\n");
         riscv_raise_exception(env, RISCV_EXCP_UNEXP_OP_TYPE, GETPC());
     }
 
-    capfat_t* cap = &rs1_v->val.cap;
+    capfat_t *cap = &rs1_v->val.cap;
     unsigned size = memop_size((MemOp)memop);
     imm = CAPSTONE_IMM12_SEXT(imm); // sign extend
     capaddr_t addr = cap->bounds.cursor + imm;
@@ -925,7 +963,7 @@ uint64_t helper_store_with_cap(CPURISCVState *env, uint32_t rs1, uint64_t imm, u
 
 void helper_reg_set_cap_compressed(CPURISCVState *env, uint32_t rd, uint64_t i64_lo, uint64_t i64_hi) {
     // CAPSTONE_DEBUG_PRINT("uncompressing capability to reg %u\n", rd);
-    capregval_t* rd_v = &env->gpr[rd];
+    capregval_t *rd_v = &env->gpr[rd];
     cap_uncompress(i64_lo, i64_hi, &rd_v->val.cap);
     rd_v->tag = env->load_is_cap;
     if(rd_v->tag) {
@@ -935,7 +973,7 @@ void helper_reg_set_cap_compressed(CPURISCVState *env, uint32_t rd, uint64_t i64
 
 uint64_t helper_compress_cap(CPURISCVState *env, uint32_t reg) {
     // CAPSTONE_DEBUG_PRINT("compressing capability in reg %u\n", reg);
-    capregval_t* reg_v = &env->gpr[reg];
+    capregval_t *reg_v = &env->gpr[reg];
     
     if(!reg_v->tag) {
         // CAPSTONE_DEBUG_PRINT("attempting to compress non-capability %lx\n", reg_v->val.scalar);
@@ -951,7 +989,7 @@ uint64_t helper_compress_cap(CPURISCVState *env, uint32_t reg) {
 
 /* set tag bit for address */
 void helper_set_cap_mem_map(CPURISCVState *env, uint32_t reg, uint64_t addr, uint64_t to_set) {
-    capregval_t* reg_v = &env->gpr[reg];
+    capregval_t *reg_v = &env->gpr[reg];
     if (to_set) {
         cap_mem_map_add(&env->cm_map, addr, &reg_v->val.cap.bounds);
     } else {
@@ -966,8 +1004,8 @@ void helper_remove_cap_mem_map(CPURISCVState *env, uint64_t addr, uint32_t memop
 /* helpers for Capstone control transfer instructions */
 
 void helper_cjalr_switch_caps(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint64_t succ_pc) {
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
 
     // rd <- pc <- rs1
     capfat_t pc_cap_v = env->pc_cap;
@@ -986,7 +1024,7 @@ void helper_cjalr_switch_caps(CPURISCVState *env, uint32_t rd, uint32_t rs1, uin
 /* Write the content of the specified register into PC reg */
 /* This does not touch PC itself */
 void helper_set_pc_cap(CPURISCVState *env, uint32_t reg) {
-    capregval_t* v = &env->gpr[reg];
+    capregval_t *v = &env->gpr[reg];
     
     if(!v->tag) {
         CAPSTONE_DEBUG_PRINT("PC cap must be a capability\n");
@@ -1001,7 +1039,7 @@ void helper_cscall(CPURISCVState *env, uint32_t rd, uint32_t rs1) {
     assert(rd == rs1);
 
     CPUState *cs = env_cpu(env);
-    capregval_t* rs1_v;
+    capregval_t *rs1_v;
     if(rs1 == 0) {
         rs1_v = &env->cih;
     } else {
@@ -1022,6 +1060,7 @@ void helper_cscall(CPURISCVState *env, uint32_t rd, uint32_t rs1) {
     capfat_t rs1_val = rs1_v->val.cap;
     rs1_v->tag = false; /* always linear */
 
+    trace_capstone_dom_switch_sync();
     swap_c_effective_regs(cs->as, env, rs1_val.bounds.base, env->pc);
 
     // set cra
@@ -1034,9 +1073,9 @@ void helper_cscall(CPURISCVState *env, uint32_t rd, uint32_t rs1) {
 
 void helper_csreturn(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2) {
     CPUState *cs = env_cpu(env);
-    capregval_t* rd_v = &env->gpr[rd];
-    capregval_t* rs1_v = &env->gpr[rs1];
-    capregval_t* rs2_v = &env->gpr[rs2];
+    capregval_t *rd_v = &env->gpr[rd];
+    capregval_t *rs1_v = &env->gpr[rs1];
+    capregval_t *rs2_v = &env->gpr[rs2];
 
     if(rd == 0) {
         if(rs1_v->tag) {
@@ -1080,6 +1119,7 @@ void helper_csreturn(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2
 
                 *rd_v = CAPREGVAL_NULL;
                 
+                trace_capstone_dom_switch_sync();
                 swap_c_effective_regs(cs->as, env, base_addr, rs1_v->val.scalar);
 
                 // write return reg
@@ -1104,6 +1144,7 @@ void helper_csreturn(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2
                 capregval_set_cap(&env->cih, &rd_cap);
                 *rd_v = CAPREGVAL_NULL;
 
+                trace_capstone_dom_switch_async(0);
                 swap_domain_scoped_regs(cs->as, env, base_addr, rs1_v->val.scalar, DOM_SCOPED_SWAP_IN);
 
                 // post the interrupts
@@ -1118,12 +1159,44 @@ void helper_csreturn(CPURISCVState *env, uint32_t rd, uint32_t rs1, uint32_t rs2
     }
 }
 
+void helper_cscapenter(CPURISCVState *env, uint32_t rs1, uint32_t rs2) {
+    // enters the capability mode
+    env->cap_mem = true;
+    
+    // generates the genesis capabilities
+    assert(rs1 && rs2); // we do not allow the platform-dependent case for now
+    uint64_t pc_lo_addr = env->gpr[rs1].val.scalar;
+    uint64_t pc_hi_addr = env->gpr[rs2].val.scalar;
+    assert(pc_lo_addr < pc_hi_addr);
+
+    env->pc_cap.bounds.base = pc_lo_addr;
+    env->pc_cap.bounds.end = pc_hi_addr;
+    env->pc_cap.type = CAP_TYPE_LIN;
+    env->pc_cap.perms = CAP_PERMS_RWX;
+
+    env->gpr[10].tag = 1;
+    env->gpr[10].val.cap.bounds.base = 0;
+    env->gpr[10].val.cap.bounds.end = pc_lo_addr;
+    env->gpr[10].val.cap.type = CAP_TYPE_LIN;
+    env->gpr[10].val.cap.perms = CAP_PERMS_RWX;
+
+    env->gpr[11].tag = 1;
+    env->gpr[11].val.cap.bounds.base = pc_hi_addr;
+    env->gpr[11].val.cap.bounds.end = (uint64_t)1 << 63; // TODO: should be 2**64
+    env->gpr[11].val.cap.type = CAP_TYPE_LIN;
+    env->gpr[11].val.cap.perms = CAP_PERMS_RWX;
+
+    cap_rev_tree_init(&env->cr_tree, &env->pc_cap.rev_node_id,
+        &env->gpr[10].val.cap.rev_node_id, &env->gpr[11].val.cap.rev_node_id);
+}
+
+
 /* helpers for Capstone debug instructions */
 
 void helper_csdebuggencap(CPURISCVState *env, uint32_t rd, uint64_t rs1_v, uint64_t rs2_v) {
     // CAPSTONE_DEBUG_PRINT("Generating cap with (0x%lx, 0x%lx)\n", rs1_v, rs2_v);
-    capregval_t* rd_v = &env->gpr[rd];
-    capfat_t* cap = &rd_v->val.cap;
+    capregval_t *rd_v = &env->gpr[rd];
+    capfat_t *cap = &rd_v->val.cap;
     cap->bounds.base = rs1_v;
     cap->bounds.end = rs2_v;
     cap->bounds.cursor = rs1_v;
@@ -1143,11 +1216,12 @@ void helper_csdebugclearcmmap(CPURISCVState *env) {
 }
 
 void helper_csdebugprint(CPURISCVState *env, uint32_t rs1) {
-    capregval_t* rs1_v = &env->gpr[rs1];
+    capregval_t *rs1_v = &env->gpr[rs1];
     if(rs1_v->tag) {
         // only printing the bounds for now
-        CAPSTONE_DEBUG_PRINT("Print = Cap(%d, 0x%lx, 0x%lx, 0x%lx)\n",
+        CAPSTONE_DEBUG_PRINT("Print = Cap(%d, 0x%x, 0x%lx, 0x%lx, 0x%lx)\n",
                             rs1_v->val.cap.type,
+                            rs1_v->val.cap.perms,
                             rs1_v->val.cap.bounds.cursor,
                             rs1_v->val.cap.bounds.base,
                             rs1_v->val.cap.bounds.end);
