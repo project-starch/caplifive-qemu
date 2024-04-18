@@ -4,34 +4,40 @@
 
 ## Build Steps
 
-Install all required packages:
-
-> On Ubuntu/Debian:
+Install all required packages. If you are on Ubuntu/Debian, please install the following packages:
 
 ```sh
-sudo apt-get install git libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev ninja-build
+sudo apt install git libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev ninja-build libslirp-dev
 ```
 
 > Other platforms: Please refer to https://wiki.qemu.org/Hosts/Linux for details.
 
-Then follow the steps below:
+Then simply follow the instructions below:
 
 ```sh
-  ./configure.sh
-  cd build
-  make -j4
-  make install
+./configure.sh
+cd build
+make -j4
+make install
 ```
 
-The binary file of `CAPSTONE-QEMU` can be found in `installation/bin/qemu-system-riscv64`.
+The executable of `CAPSTONE-QEMU` can be found in `installation/bin/qemu-system-riscv64`.
 
 ## Run
 
+3 scripts are available to run `CAPSTONE-QEMU`:
+
 ```sh
-  # start capstone-qemu
-  ./start.sh
-  # debug capstone-qemu with gdb
-  ./debug.sh
-  # debug linux running on capstone-qemu with gdb
-  ./gdb.sh
+# run capstone-qemu
+./start.sh
+```
+
+```sh
+# debug capstone-qemu with gdb
+./debug.sh
+```
+
+```sh
+# debug linux running on capstone-qemu with gdb
+./gdb.sh
 ```
