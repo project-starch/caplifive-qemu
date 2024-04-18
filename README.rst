@@ -1,4 +1,34 @@
 ===========
+CAPSTONE-QEMU README
+===========
+
+CAPSTONE-QEMU is based on `<https://github.com/qemu/qemu>`_.
+
+Building
+===========
+
+.. code-block:: shell
+
+  ./configure.sh
+  cd build
+  make -j4
+  make install
+
+The binary file can be found in `installation/bin/qemu-system-riscv64`.
+
+Running
+===========
+
+.. code-block:: shell
+
+  # start capstone-qemu
+  ./start.sh
+  # debug capstone-qemu with gdb
+  ./debug.sh
+  # debug linux running on capstone-qemu with gdb
+  ./gdb.sh
+
+===========
 QEMU README
 ===========
 
