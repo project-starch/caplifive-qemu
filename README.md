@@ -1,18 +1,20 @@
-# `CAPSTONE-QEMU` README
+# Capstone-QEMU README
 
-`CAPSTONE-QEMU` is built upon [QEMU](https://github.com/qemu/qemu).
+CAPSTONE-QEMU modifies [QEMU](https://github.com/qemu/qemu) to emulate a Captainer system.
 
-## Build Steps
+## Dependencies
 
-Install all required packages. If you are on Ubuntu/Debian, please install the following packages:
+Make sure your environment meets the [requirements of QEMU](https://wiki.qemu.org/Hosts/Linux).
+
+If you are on Ubuntu/Debian, the following packages are suggested to be installed:
 
 ```sh
 sudo apt install git libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev ninja-build libslirp-dev
 ```
 
-> Other platforms: Please refer to https://wiki.qemu.org/Hosts/Linux for details.
+## Build Instructions
 
-Then simply follow the instructions below:
+Simply run the instructions below:
 
 ```sh
 ./configure.sh
@@ -21,11 +23,11 @@ make -j4
 make install
 ```
 
-The executable of `CAPSTONE-QEMU` can be found in `installation/bin/qemu-system-riscv64`.
+The executable of Capstone-QEMU can be found in `installation/bin/qemu-system-riscv64`.
 
-## Run
+## Quick Start
 
-3 scripts are available to run `CAPSTONE-QEMU`:
+3 scripts are included in this repo to start Capstone-QEMU:
 
 ```sh
 # run capstone-qemu
