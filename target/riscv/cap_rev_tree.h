@@ -3,7 +3,7 @@
 
 #include "cap.h"
 
-#define CAP_REV_TREE_SIZE 1024
+#define CAP_REV_TREE_SIZE 10000
 #define _CAP_REV_NODE(tree, node_id) ((tree)->node_pool[node_id])
 #define _CAP_REV_NODE_REUSABLE(tree, node_id) (_CAP_REV_NODE(tree, node_id).refcount == 0 && !_CAP_REV_NODE(tree, node_id).valid)
 
