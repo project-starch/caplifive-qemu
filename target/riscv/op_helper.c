@@ -1257,3 +1257,4 @@ void helper_csdebugcountclear(CPURISCVState *env) {
     for(i = 0; i < 32; i ++) {
         env->capstone_debug_counters[i] = 0;
     }
+}
