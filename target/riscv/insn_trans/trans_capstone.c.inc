@@ -295,3 +295,8 @@ static bool trans_csdebugcountprint(DisasContext *ctx, arg_csdebugcountprint *a)
     gen_helper_csdebugcountprint(cpu_env);
     return true;
 }
+
+static bool trans_csdebugcountclear(DisasContext *ctx, arg_csdebugcountclear *a) {
+    gen_helper_csdebugcountclear(cpu_env);
+    return true;
+}
