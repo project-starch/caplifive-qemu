@@ -32,7 +32,6 @@ QEMU_REPO="../capstone-qemu"
 BUILDROOT_REPO="../captainer-buildroot"
 CAPSTONE_C_REPO="../capstone-c"
 
-# Clone repositories
 clone_repo "https://github.com/project-starch/captainer-buildroot.git" "$BUILDROOT_REPO"
 clone_repo "https://github.com/jasonyu1996/capstone-c.git" "$CAPSTONE_C_REPO"
 
@@ -51,16 +50,23 @@ case $choice in
         echo "Building Docker containers..."
 
         docker build -t qemu-build "$QEMU_REPO" || { echo "Failed to build QEMU container"; exit 1; }
+        cd $CAPSTONE_C_REPO
         docker build -t capstone-c "$CAPSTONE_C_REPO" || { echo "Failed to build Capstone-C container"; exit 1; }
+        cd $BUILDROOT_REPO
         docker build -t capstone-qemu "$BUILDROOT_REPO" || { echo "Failed to build Buildroot container"; exit 1; }
-
-        echo "Pruning unused Docker containers and images, excluding built ones..."
-        docker image prune -af --filter "label!=qemu-build" --filter "label!=capstone-c" --filter "label!=capstone-qemu"
-
+        cd $QEMU_REPO
+        # echo "Pruning unused Docker containers and images, excluding built ones..."
+        # docker images -q | grep -v -E "$(docker images qemu-build -q)|$(docker images capstone-qemu -q)|$(docker images capstone-c -q)" | xargs docker rmi -f        
         ;;
         
     2)
-        echo "Local installation is a work in progress"
+        bash local_build.sh
+        cd $CAPSTONE_C_REPO
+        bash local_build.sh
+        cd $BUILDROOT_REPO
+        bash local_build.sh
+        cd $QEMU_REPO
+
         ;;
         
     *)
