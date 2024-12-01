@@ -1,33 +1,52 @@
-# Capstone-QEMU README
+# Capstone-QEMU
 
-CAPSTONE-QEMU modifies [QEMU](https://github.com/qemu/qemu) to emulate a Captainer system.
+Capstone-QEMU enhances [QEMU](https://github.com/qemu/qemu) to emulate a Captainer system, providing powerful tools for testing and development. 
 
-## Dependencies
+---
 
-Make sure your environment meets the [requirements of QEMU](https://wiki.qemu.org/Hosts/Linux).
+## 📦 **Build Instructions**
 
-If you are on Ubuntu/Debian, the following packages are suggested to be installed:
+### Build the Full System with Captainer-Buildroot
 
-```sh
-sudo apt install git libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev ninja-build libslirp-dev
+To build the entire system using [Captainer-Buildroot](https://github.com/project-starch/captainer-buildroot):
+
+1. Run the following script:
+   ```bash
+   ./full_build.sh
+
+2. Choose your build environment (when prompted):
+   - **Docker Build**: Enter `1`  
+   - **Local Build** (Debian-based machine): Enter `2` 
+
+**Note**: To interact with the Docker image:
+
+```bash
+docker run -it capstone-qemu bash
 ```
 
-## Build Instructions
+### Build Capstone-QEMU Only
 
-Simply run the instructions below:
-
-```sh
-./configure.sh
-cd build
-make -j4
-make install
+> Option 1: Local Build (Debian-based Machine)
+```bash
+./local_build.sh
+```
+> Option 2: Docker Image Build
+```bash
+docker build -t <tag> .
 ```
 
-The executable of Capstone-QEMU can be found in `installation/bin/qemu-system-riscv64`.
+## 🚀 **Quick Start**
 
-## Quick Start
+### Running full system: Capstone-QEMU with Captainer-Buildroot
+After a successful build, use the following scripts to start or debug Capstone-QEMU.  
 
-3 scripts are included in this repo to start Capstone-QEMU:
+1. Interact with the Docker Image (if using the docker installation method):  
+```bash
+docker run -it <tag> bash
+``` 
+2. Navigate to the `CAPSTONE_QEMU` directory (inside the container if using Docker).
+
+3. Then you can run these scripts:
 
 ```sh
 # run capstone-qemu
@@ -43,3 +62,23 @@ The executable of Capstone-QEMU can be found in `installation/bin/qemu-system-ri
 # debug linux running on capstone-qemu with gdb
 ./gdb.sh
 ```
+
+### ⚡ **Quick Notes:**
+---
+
+- Ensure you're in the correct directory when executing the scripts, especially if running within a Docker container.
+- Customize the Docker image tag during build as needed (inside the respective images as well).
+- If you are expecting a successful build using the build scripts, your workspace would be organized as follows:
+```yaml
+    workspace/
+    ├── capstone-c/
+    ├── capstone-qemu/
+    │   ├── start.sh
+    │   ├── debug.sh
+    │   ├── gdb.sh
+    │   ├── full_build.sh
+    │   ├── local_build.sh
+    │   └── (other files)
+    └── captainer-buildroot/    
+```
+---
