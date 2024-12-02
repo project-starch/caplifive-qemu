@@ -1,4 +1,4 @@
-# Capstone-QEMU
+# 🛡️ Capstone-QEMU
 
 Capstone-QEMU enhances [QEMU](https://github.com/qemu/qemu) to emulate a Captainer system, providing powerful tools for testing and development. 
 
@@ -62,6 +62,8 @@ docker run -it <tag> bash
 # debug linux running on capstone-qemu with gdb
 ./gdb.sh
 ```
+
+4. To run the case studies, follow the steps in the [Captainer-Buildroot](https://github.com/project-starch/captainer-buildroot) repository
 
 ### ⚡ **Quick Notes:**
 ---

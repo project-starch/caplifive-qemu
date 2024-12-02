@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y \
     tar \
     findutils \
     bzip2 \
+    expect \
     zlib1g-dev \
     ninja-build \
     libslirp-dev \
