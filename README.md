@@ -29,7 +29,7 @@ docker run -it capstone-qemu bash
 
 > Option 1: Local Build (Debian-based Machine)
 ```bash
-./build.sh
+./local_build.sh
 ```
 > Option 2: Docker Image Build
 ```bash
