@@ -1,6 +1,6 @@
 # 🛡️ Capstone-QEMU
 
-Capstone-QEMU enhances [QEMU](https://github.com/qemu/qemu) to emulate a Captainer system, providing powerful tools for testing and development. 
+Capstone-QEMU enhances [QEMU](https://github.com/qemu/qemu) to emulate a Captainer system, providing powerful tools for testing and development.
 
 ---
 
@@ -12,11 +12,12 @@ To build the entire system using [Captainer-Buildroot](https://github.com/projec
 
 1. Run the following script:
    ```bash
-   ./full_build.sh
+   ./build.sh
+   ```
 
 2. Choose your build environment (when prompted):
-   - **Docker Build**: Enter `1`  
-   - **Local Build** (Debian-based machine): Enter `2` 
+   - **Docker Build**: Enter `1`
+   - **Local Build** (Debian-based machine): Enter `2`
 
 **Note**: To interact with the Docker image:
 
@@ -28,7 +29,7 @@ docker run -it capstone-qemu bash
 
 > Option 1: Local Build (Debian-based Machine)
 ```bash
-./local_build.sh
+./build.sh
 ```
 > Option 2: Docker Image Build
 ```bash
@@ -38,12 +39,12 @@ docker build -t <tag> .
 ## 🚀 **Quick Start**
 
 ### Running full system: Capstone-QEMU with Captainer-Buildroot
-After a successful build, use the following scripts to start or debug Capstone-QEMU.  
+After a successful build, use the following scripts to start or debug Capstone-QEMU.
 
-1. Interact with the Docker Image (if using the docker installation method):  
+1. Interact with the Docker Image (if using the docker installation method):
 ```bash
 docker run -it <tag> bash
-``` 
+```
 2. Navigate to the `CAPSTONE_QEMU` directory (inside the container if using Docker).
 
 3. Then you can run these scripts:
@@ -78,9 +79,9 @@ docker run -it <tag> bash
     │   ├── start.sh
     │   ├── debug.sh
     │   ├── gdb.sh
-    │   ├── full_build.sh
+    │   ├── build.sh
     │   ├── local_build.sh
     │   └── (other files)
-    └── captainer-buildroot/    
+    └── captainer-buildroot/
 ```
 ---
