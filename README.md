@@ -1,14 +1,15 @@
-# 🛡️ Capstone-QEMU
+# 🛡️ Caplifive-QEMU
 
-Capstone-QEMU enhances [QEMU](https://github.com/qemu/qemu) to emulate a Captainer system, providing powerful tools for testing and development.
+Caplifive-QEMU is an emulator of
+a [Caplifive](https://capstone.kisp-lab.org/) system based on [QEMU](https://github.com/qemu/qemu).
 
 ---
 
 ## 📦 **Build Instructions**
 
-### Build the Full System with Captainer-Buildroot
+### Build the Full System with Caplifive-Buildroot
 
-To build the entire system using [Captainer-Buildroot](https://github.com/project-starch/captainer-buildroot):
+To build the entire system using [Caplifive-Buildroot](https://github.com/project-starch/caplifive-buildroot):
 
 1. Run the following script:
    ```bash
@@ -22,10 +23,10 @@ To build the entire system using [Captainer-Buildroot](https://github.com/projec
 **Note**: To interact with the Docker image:
 
 ```bash
-docker run -it capstone-qemu bash
+docker run -it caplifive-qemu bash
 ```
 
-### Build Capstone-QEMU Only
+### Build Caplifive-QEMU Only
 
 > Option 1: Local Build (Debian-based Machine)
 ```bash
@@ -38,8 +39,8 @@ docker build -t <tag> .
 
 ## 🚀 **Quick Start**
 
-### Running full system: Capstone-QEMU with Captainer-Buildroot
-After a successful build, use the following scripts to start or debug Capstone-QEMU.
+### Running full system: Caplifive-QEMU with Caplifive-Buildroot
+After a successful build, use the following scripts to start or debug Caplifive-QEMU.
 
 1. Interact with the Docker Image (if using the docker installation method):
 ```bash
@@ -50,21 +51,21 @@ docker run -it <tag> bash
 3. Then you can run these scripts:
 
 ```sh
-# run capstone-qemu
+# run caplifive-qemu
 ./start.sh
 ```
 
 ```sh
-# debug capstone-qemu with gdb
+# debug caplifive-qemu with gdb
 ./debug.sh
 ```
 
 ```sh
-# debug linux running on capstone-qemu with gdb
+# debug linux running on caplifive-qemu with gdb
 ./gdb.sh
 ```
 
-4. To run the case studies, follow the steps in the [Captainer-Buildroot](https://github.com/project-starch/captainer-buildroot) repository
+4. To run the case studies, follow the steps in the [Caplifive-Buildroot](https://github.com/project-starch/caplifive-buildroot) repository
 
 ### ⚡ **Quick Notes:**
 ---
@@ -75,13 +76,13 @@ docker run -it <tag> bash
 ```yaml
     workspace/
     ├── capstone-c/
-    ├── capstone-qemu/
+    ├── caplifive-qemu/
     │   ├── start.sh
     │   ├── debug.sh
     │   ├── gdb.sh
     │   ├── build.sh
     │   ├── local_build.sh
     │   └── (other files)
-    └── captainer-buildroot/
+    └── caplifive-buildroot/
 ```
 ---

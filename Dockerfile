@@ -37,9 +37,9 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY . ./capstone-qemu
+COPY . ./caplifive-qemu
 
-RUN cd capstone-qemu && \
+RUN cd caplifive-qemu && \
     ./configure.sh && \
     cd build && \
     make -j4 && \
